@@ -43,7 +43,7 @@ app.conf.update(
 
 # Schedule the task to run every hour
 app.conf.beat_schedule = {
-    'process-videos-hourly': {
+    'process-videos-every-10s': {
         'task': 'video_processor.process_video_batch',
         # 'schedule': crontab(minute=0, hour='*'),
         'schedule': 10.0,
