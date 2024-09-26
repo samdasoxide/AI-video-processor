@@ -1,0 +1,10 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.env
+/clips_output
+/downloads
+celerybeat-schedule.db
+celerybeat-schedule

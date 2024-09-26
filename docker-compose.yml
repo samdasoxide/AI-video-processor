@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  worker:
+    build: .
+    container_name: celery-worker
+    command: celery -A video_processor worker --loglevel=info
+    volumes:
+      - ./:/app
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+
+  beat:
+    build: .
+    container_name: celery-beat
+    command: celery -A video_processor beat --loglevel=info
+    volumes:
+      - ./:/app
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:6-alpine
+
+  flower:
+    build: .
+    command: celery -A video_processor flower
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis

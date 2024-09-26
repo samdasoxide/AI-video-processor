@@ -1,0 +1,14 @@
+celery==5.4.0
+pydub==0.25.1
+openai==1.47.1
+openai-whisper==20231117
+opencv-python==4.10.0.84
+python-dotenv==1.0.1
+redis==5.0.8
+supabase==2.7.4
+yt-dlp==2024.8.6
+moviepy==1.0.3
+psutil==6.0.0
+aiofiles==24.1.0
+flower==2.0.1
+# supabase_py_async==2.5.6
