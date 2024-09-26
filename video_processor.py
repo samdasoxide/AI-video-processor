@@ -1,9 +1,7 @@
 import os
 import asyncio
 import aiohttp
-import aiofiles
 from celery import Celery
-from celery.schedules import crontab
 from dotenv import load_dotenv
 from supabase import create_client, Client
 import yt_dlp
@@ -15,7 +13,6 @@ from moviepy.audio.fx.all import audio_normalize
 import logging
 import json
 from redis import Redis
-from redis.exceptions import LockError
 from celery.exceptions import Ignore
 
 # Load environment variables
@@ -23,11 +20,6 @@ load_dotenv()
 
 # Initialize Supabase client
 supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
-
-# async def create_supabase() -> Client:
-#     return await create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
-
-# supabase = create_supabase()
 
 # Initialize OpenAI client
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -70,7 +62,7 @@ os.makedirs(clips_output, exist_ok=True)
 
 
 def fetch_unprocessed_videos():
-    print("### supabase ###", supabase)
+    logging.info("Creating Supabase instance")
     response = supabase.table('videos').select('id', 'url').eq("processed", False).limit(BATCH_SIZE).execute()
     return response.data
 
@@ -89,7 +81,6 @@ async def transcribe_video(video_path):
     loop = asyncio.get_event_loop()
     model = whisper.load_model("base")
     result = await loop.run_in_executor(None, model.transcribe, video_path)
-    print(result["text"])
     return result["text"]
 
 async def identify_insightful_clips(transcript):
@@ -160,8 +151,6 @@ async def find_insightful_clips(transcript, content_type, min_duration=10, max_d
                     clips = json.loads(content)
                     # Sort clips by relevance_score in descending order
                     clips.sort(key=lambda x: x['relevance_score'], reverse=True)
-
-                    print("### Found these clips ###", clips, "Clip len -->", len(clips))
                     
                     # Ensure we have at least min_clips
                     if len(clips) < min_clips:
@@ -184,7 +173,6 @@ async def find_insightful_clips(transcript, content_type, min_duration=10, max_d
                     
                     # Select top clips, ensuring we have at least min_clips and at most max_clips
                     selected_clips = clips[:3]
-                    print("### Found these clips ###", selected_clips, "Clip len -->", len(selected_clips))
                     return selected_clips
                 except json.JSONDecodeError as e:
                     logging.error(f"JSON Decode Error: {e}")
@@ -284,7 +272,7 @@ def upload_to_supabase(file_path, bucket):
     return f"{bucket}/{file_name}"
 
 async def process_single_video(video):
-    print("### PROCESSING SINGLE VIDEO ###")
+    logging.info("Processing single video")
     try:
         async with aiohttp.ClientSession() as session:
             video_path = await download_video(session, video)
@@ -354,7 +342,6 @@ def auto_reframe(clip, target_aspect_ratio):
     
 
 async def extract_and_enhance_clip(video_path, start_time, end_time, output_path):
-    print("## Extracting and enhancing clip ###")
     logging.info(f"Extracting and enhancing clip for {video_path} and {output_path}")
     try:
         # Extract the clip
@@ -402,10 +389,9 @@ def process_video_batch(self):
             logging.info("Lock released after video batch processing")
 
 def _process_video_batch():
-    print("#### PROCESSING VIDEO BATCH ####")
+    logging.info("Processing Video batch")
     async def async_batch_process():
         videos = fetch_unprocessed_videos()
-        print("### fetched videos ###", videos)
         if not videos:
             print("No videos to process.")
             return
